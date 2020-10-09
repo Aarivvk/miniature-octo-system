@@ -22,6 +22,12 @@ RUN apt-get install -y libtiff5
 
 RUN apt-get install -y python3-opencv
 
+RUN apt-get install -y swig
+
+RUN pip install box2d box2d-kengz
+
 RUN pip install --upgrade pip
 
 RUN pip install opencv-python
+
+RUN pip install tensorlayer
