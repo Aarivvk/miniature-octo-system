@@ -6,11 +6,10 @@
 IMAGE=carlasim/carla-ros:local
 
 SHARED_DOCKER_DIR=/home/carla
-SHARED_HOST_DIR=$HOME/Program/carla/share_dir
+SHARED_HOST_DIR=$HOME/dev/carla
 
 docker run -it --rm \
        --name vkcarla \
-       --gpus all \
        -e DISPLAY=${DISPLAY} \
        --volume=$SHARED_HOST_DIR:$SHARED_DOCKER_DIR:rw \
        --privileged \
