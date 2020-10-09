@@ -17,3 +17,9 @@ I use POP OS, where the setup for NVIDIA is done alredy just need update and upg
 
 
 Any sugestions are welcome, I'll try to keep it up to date as possible.
+
+
+### Host environment:
+1. POP os 20.04 --> Host OS
+2. Radeon™ RX 5700 XT Graphics | AMD --> used for Carla simulation
+3. 	GeForce GTX 1660 Ti --> used for tensorflow docker
