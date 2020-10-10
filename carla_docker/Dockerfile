@@ -27,6 +27,8 @@ USER ${USER}
 WORKDIR ${HOME}
 SHELL ["/bin/bash", "-c"]
 
+RUN pip install simple-pid
+
 RUN pip install --user pygame numpy && \
     cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "export PYTHONPATH=/opt/ros/melodic/lib/python2.7/dist-packages:/opt/carla-simulator/PythonAPI/carla/dist/carla-0.9.9-py2.7-linux-x86_64.egg" >> ${HOME}/.bashrc' && \
