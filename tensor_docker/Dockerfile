@@ -4,6 +4,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ENV DISPLAY=:1
 
+ENV HOME=/home/tf
+
 RUN apt-get update && apt-get install -y apt-utils sudo software-properties-common
 
 RUN apt-get install -y libxkbcommon-x11-0
@@ -32,9 +34,13 @@ RUN pip install opencv-python
 
 RUN pip install tensorlayer
 
+RUN pip install rospkg catkin_pkg
+
 RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
-RUN apt-get update && apt-get install -y ros-melodic-desktop
+RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml
 
-RUN sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc'
+RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
+    sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
+    sh -c 'echo "source /home/tf/dev/tmp/devel/setup.bash" >> ${HOME}/.bashrc'
