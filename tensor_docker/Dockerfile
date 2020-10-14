@@ -45,5 +45,4 @@ RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml carla-
 
 RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
-    sh -c 'echo "source /opt/carla-ros-bridge/melodic/setup.bash" >> ${HOME}/.bashrc' &&\
-    sh -c 'echo "source /home/tf/dev/tmp/devel/setup.bash" >> ${HOME}/.bashrc'
+    sh -c 'echo "source /opt/carla-ros-bridge/melodic/setup.bash" >> ${HOME}/.bashrc'
