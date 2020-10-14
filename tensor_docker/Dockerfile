@@ -36,11 +36,14 @@ RUN pip install tensorlayer
 
 RUN pip install rospkg catkin_pkg
 
-RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 81061A1A042F527D && \
+    add-apt-repository "deb [arch=amd64 trusted=yes] http://dist.carla.org/carla-ros-bridge-melodic/ bionic main" && \
+    sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
-RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml
+RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml carla-ros-bridge-melodic
 
 RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
+    sh -c 'echo "source /opt/carla-ros-bridge/melodic/setup.bash" >> ${HOME}/.bashrc' &&\
     sh -c 'echo "source /home/tf/dev/tmp/devel/setup.bash" >> ${HOME}/.bashrc'
