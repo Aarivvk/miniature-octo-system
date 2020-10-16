@@ -17,6 +17,8 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 92635A407F7A020C &&
 RUN apt-get update && apt-get install -y carla-simulator ros-melodic-desktop carla-ros-bridge-melodic 
 # python-rosdep2
 
+RUN apt-get install -y nano gedit
+
 ENV USER carla
 ENV HOME /home/${USER}
 ENV SHELL /bin/bash
@@ -27,7 +29,7 @@ USER ${USER}
 WORKDIR ${HOME}
 SHELL ["/bin/bash", "-c"]
 
-RUN pip install simple-pid
+RUN pip install --user simple-pid
 
 RUN pip install --user pygame numpy && \
     cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \

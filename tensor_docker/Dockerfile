@@ -4,8 +4,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ENV DISPLAY=:1
 
-ENV HOME=/home/tf
-
 RUN apt-get update && apt-get install -y apt-utils sudo software-properties-common
 
 RUN apt-get install -y libxkbcommon-x11-0
@@ -42,6 +40,18 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 81061A1A042F527D &&
     apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
 RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml carla-ros-bridge-melodic
+
+RUN apt-get install -y nano gedit
+
+ENV USER tf
+ENV HOME /home/${USER}
+ENV SHELL /bin/bash
+
+RUN useradd -m ${USER} && gpasswd -a ${USER} sudo && echo "${USER}:tf" | chpasswd
+
+USER ${USER}
+WORKDIR ${HOME}
+SHELL ["/bin/bash", "-c"]
 
 RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
