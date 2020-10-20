@@ -47,7 +47,9 @@ ENV USER tf
 ENV HOME /home/${USER}
 ENV SHELL /bin/bash
 
-RUN useradd -m ${USER} && gpasswd -a ${USER} sudo && echo "${USER}:tf" | chpasswd
+RUN sh -c 'echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers'
+
+RUN useradd -m ${USER} && gpasswd -a ${USER} sudo && echo "${USER}:${USER}" | chpasswd
 
 USER ${USER}
 WORKDIR ${HOME}
@@ -55,4 +57,5 @@ SHELL ["/bin/bash", "-c"]
 
 RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
+    sh -c 'echo "export PYTHONPATH=${HOME}/dev/carla/pyDist/carla-0.9.9-py3.7-linux-x86_64.egg:${PYTHONPATH}" >> ${HOME}/.bashrc' && \
     sh -c 'echo "source /opt/carla-ros-bridge/melodic/setup.bash" >> ${HOME}/.bashrc'
