@@ -1,5 +1,5 @@
 # miniature-octo-system
-This is to create maintain the Dockerfile for carla(on AMD graphics) and tensorflow(on NVIDIA card), enable the developments for Autonomus driving out of the box and in long term I want to make framework for AD agent and platform.
+This is to maintain the Dockerfile for carla(on AMD graphics) and tensorflow(on NVIDIA card), enable the developments for Autonomus driving out of the box and in long term I want to make framework for AD agent and platform.
 
 ![Alt text](docs/overview.png?raw=true "Overview")
 
