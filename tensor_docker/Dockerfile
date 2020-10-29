@@ -34,6 +34,8 @@ RUN pip install tensorlayer
 
 RUN pip install rospkg catkin_pkg
 
+RUN pip install tf-agents gym
+
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 81061A1A042F527D && \
     add-apt-repository "deb [arch=amd64 trusted=yes] http://dist.carla.org/carla-ros-bridge-melodic/ bionic main" && \
     sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list' && \
@@ -57,5 +59,5 @@ SHELL ["/bin/bash", "-c"]
 
 RUN cp /usr/share/base-files/dot.bashrc ${HOME}/.bashrc && \
     sh -c 'echo "source /opt/ros/melodic/setup.bash" >> ${HOME}/.bashrc' && \
-    sh -c 'echo "export PYTHONPATH=${HOME}/dev/carla/pyDist/carla-0.9.9-py3.7-linux-x86_64.egg:${PYTHONPATH}" >> ${HOME}/.bashrc' && \
+    sh -c 'echo "export PYTHONPATH=${HOME}/dev/carla_env/carla-0.9.9-py3.7-linux-x86_64.egg:${PYTHONPATH}" >> ${HOME}/.bashrc' && \
     sh -c 'echo "source /opt/carla-ros-bridge/melodic/setup.bash" >> ${HOME}/.bashrc'

@@ -6,7 +6,7 @@
 IMAGE=carlasim/carla-ros:local
 
 SHARED_DOCKER_DIR=/home/carla/shared
-SHARED_HOST_DIR=$HOME/dev/carla/
+SHARED_HOST_DIR=$HOME/dev/
 
 docker run -it --rm \
        --name vkcarla \
