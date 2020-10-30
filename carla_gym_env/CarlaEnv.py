@@ -15,7 +15,7 @@ from carla_msgs.msg import CarlaLaneInvasionEvent
 
 from sensor_msgs.msg import Image
 
-from carla_gym.ego import EgoHandler
+from carla_gym_env.ego import EgoHandler
 
 
 class CarlaEnv(py_environment.PyEnvironment):
@@ -24,7 +24,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 		super().__init__()
 		
 		rospy.init_node('carla_ego_gym', anonymous=True)
-		self.rate = rospy.Rate(10) # 100Hz
+		self.rate = rospy.Rate(5) # 100Hz
 		
 		self.pub_ackermann_cmd = rospy.Publisher('/carla/ego_vehicle/ackermann_cmd', AckermannDrive, queue_size=5)
 		self.pub_carla_control_cmd = rospy.Publisher('/carla/control', CarlaControl, queue_size=5)
@@ -43,7 +43,10 @@ class CarlaEnv(py_environment.PyEnvironment):
 		self.carla_ctrl_cmd.command = self.carla_ctrl_cmd.STEP_ONCE
 		self.ackermann_cmd = AckermannDrive()
 
-		self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=[0.0, -0.5], maximum=[4.5, 0.5], name='action')
+		# History data
+		self.last_steering = 0.0
+
+		self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=[0.0, -0.5], maximum=[5.0, 0.5], name='action')
 		self._observation_spec = array_spec.BoundedArraySpec(shape=(84, 84, 3), dtype=np.float32, minimum=0, maximum=1, name='observation')
 
 		self._send_command([0,0])
@@ -69,9 +72,8 @@ class CarlaEnv(py_environment.PyEnvironment):
 
 	def _reset(self):
 		# print(f"Resetting environment collid: {self.is_ego_collided} lane_crossed:{self.data_lane_crossed}")
-		self.ego.reset_ego_location()
 		self._reset_data()
-		self.data_cam_front_rgb = np.zeros((84, 84, 3), dtype=np.float32)
+		self.ego.reset_ego_location()
 		self._send_command([0,0])
 		self.rate.sleep()
 		return time_step.restart(self.data_cam_front_rgb)
@@ -86,7 +88,8 @@ class CarlaEnv(py_environment.PyEnvironment):
 		if action[0] == 0.0:
 			reward = -1
 		else:
-			reward = action[0]/4.5
+			reward = action[0]/4.5 - abs(self.last_steering - action[1])/self._action_spec.maximum[1]
+			self.last_steering = action[1]
 		# needed for ros msg to sync.
 		self.rate.sleep()
 		# return transition depending on game state
@@ -97,6 +100,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 			return time_step.transition(self.data_cam_front_rgb, reward)
 
 	def _reset_data(self):
+		self.last_steering = 0.0
 		self.data_collision_intensity = 0.0
 		self.data_lane_crossed = False
 		self.is_ego_collided = False

@@ -16,12 +16,13 @@ from tf_agents.metrics import tf_metrics
 from tf_agents.networks.actor_distribution_rnn_network import ActorDistributionRnnNetwork
 from tf_agents.networks.value_rnn_network import ValueRnnNetwork
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
+from tf_agents.policies.policy_saver import PolicySaver
 
 from signal import signal, SIGINT
 
 import threading
 
-from carla_gym.CarlaEnv import CarlaEnv
+from carla_gym_env.CarlaEnv import CarlaEnv
 # from utils.visualization_helper import create_video
 
 flags.DEFINE_string('videos_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'), 'Directory to write evaluation videos to')
@@ -36,14 +37,14 @@ def create_networks(observation_spec, action_spec):
 	actor_net = ActorDistributionRnnNetwork(
 		observation_spec,
 		action_spec,
-		conv_layer_params=[(16, 8, 4), (32, 4, 2)],
+		conv_layer_params=[(64, 8, 4), (32, 4, 2)],
 		input_fc_layer_params=(256,),
 		lstm_size=(256,),
 		output_fc_layer_params=(128,),
 		activation_fn=tf.nn.elu)
 	value_net = ValueRnnNetwork(
 		observation_spec,
-		conv_layer_params=[(16, 8, 4), (32, 4, 2)],
+		conv_layer_params=[(64, 8, 4), (32, 4, 2)],
 		input_fc_layer_params=(256,),
 		lstm_size=(256,),
 		output_fc_layer_params=(128,),
@@ -57,7 +58,7 @@ def train_eval_doom_simple(
 		num_environment_steps=30000000,
 		collect_episodes_per_iteration=32,
 		num_parallel_environments=1,
-		replay_buffer_capacity=301*20,  # Per-environment
+		replay_buffer_capacity=301*10,  # Per-environment
 		# Params for train
 		num_epochs=25,
 		learning_rate=4e-4,
@@ -114,6 +115,9 @@ def train_eval_doom_simple(
 	collect_time = 0
 	train_time = 0
 	timed_at_step = global_step.numpy()
+	
+	my_policy = tf_agent.collect_policy
+	saver = PolicySaver(my_policy, batch_size=None)
 
 	print("collecting samples initial:")
 	collect_driver.run()
@@ -167,6 +171,7 @@ def train_eval_doom_simple(
 
 		if global_step_val % eval_interval == 0:
 			print("Evaluating!!")
+			saver.save('agent/saved/policy_ppo_simple')
 			# evaluate()
 
 	# evaluate()
