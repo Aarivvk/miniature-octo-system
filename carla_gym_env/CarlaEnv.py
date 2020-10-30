@@ -75,7 +75,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 		self._reset_data()
 		self.ego.reset_ego_location()
 		self._send_command([0,0])
-		self.rate.sleep()
+		self.ego.step()
 		return time_step.restart(self.data_cam_front_rgb)
 
 
@@ -91,8 +91,10 @@ class CarlaEnv(py_environment.PyEnvironment):
 			reward = action[0]/4.5 - abs(self.last_steering - action[1])/self._action_spec.maximum[1]
 			self.last_steering = action[1]
 		# needed for ros msg to sync.
-		self.rate.sleep()
+		# self.rate.sleep()
+		self.ego.step()
 		# return transition depending on game state
+		# self.render()
 		if self.isEgoViolatedTraffic():
 			reward = -1
 			return time_step.termination(self.data_cam_front_rgb, reward)
@@ -108,8 +110,8 @@ class CarlaEnv(py_environment.PyEnvironment):
 
 	def render(self, mode='rgb_array'):
 		""" Return image for rendering. """
-		# cv2.imshow("vk", self.data_cam_front_rgb)
-		# cv2.waitKey(1)
+		cv2.imshow("vk", self.data_cam_front_rgb)
+		cv2.waitKey(1)
 		return self.data_cam_front_rgb
 
 	def isEgoViolatedTraffic(self):

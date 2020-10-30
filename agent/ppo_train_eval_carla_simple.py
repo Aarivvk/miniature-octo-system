@@ -28,10 +28,18 @@ from carla_gym_env.CarlaEnv import CarlaEnv
 flags.DEFINE_string('videos_dir', os.getenv('TEST_UNDECLARED_OUTPUTS_DIR'), 'Directory to write evaluation videos to')
 FLAGS = flags.FLAGS
 
+terminate = False
+counter = 0
+
 def handler(signal_received, frame):
     # Handle any cleanup here
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
-    exit(0)
+	print('SIGINT or CTRL-C detected. Exiting gracefully')
+	global terminate 
+	global counter
+	terminate = True
+	counter = counter + 1
+	if(counter == 3):
+		exit(0)
 
 def create_networks(observation_spec, action_spec):
 	actor_net = ActorDistributionRnnNetwork(
@@ -57,8 +65,8 @@ def train_eval_doom_simple(
 		# Params for collect
 		num_environment_steps=30000000,
 		collect_episodes_per_iteration=32,
-		num_parallel_environments=1,
-		replay_buffer_capacity=301*10,  # Per-environment
+		num_parallel_environments=32,
+		replay_buffer_capacity=301,  # Per-environment
 		# Params for train
 		num_epochs=25,
 		learning_rate=4e-4,
@@ -70,7 +78,7 @@ def train_eval_doom_simple(
 	"""A simple train and eval for PPO."""
 	# if not os.path.exists(videos_dir):
 	# 	os.makedirs(videos_dir)
-
+	global terminate
 	eval_py_env = CarlaEnv()
 	tf_env = tf_py_environment.TFPyEnvironment(eval_py_env)
 
@@ -125,7 +133,7 @@ def train_eval_doom_simple(
 	replay_buffer.clear()
 	print(f"train size {train_replay_buffer.num_frames()} buffer size{replay_buffer.num_frames()}")
 
-	while environment_steps_metric.result() < num_environment_steps:
+	while environment_steps_metric.result() < num_environment_steps and not terminate:
 		start_time = time.time()
 		print("collecting samples")
 		collector_thread = threading.Thread(target=collect_driver.run)
@@ -133,7 +141,7 @@ def train_eval_doom_simple(
 
 		start_time = time.time()
 		count = 0
-		while collector_thread.is_alive():
+		while collector_thread.is_alive() and not terminate:
 			count = count + 1
 			print(f"Training agent {count}")
 			total_loss, _ = train_step()
@@ -173,7 +181,7 @@ def train_eval_doom_simple(
 			print("Evaluating!!")
 			saver.save('agent/saved/policy_ppo_simple')
 			# evaluate()
-
+	print("Terminated")
 	# evaluate()
 
 

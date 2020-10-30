@@ -11,13 +11,21 @@ class EgoHandler:
         time.sleep(1)
         self.world = client.get_world()
         self.ego_vehicle = self.__get_ego_vehicle()
+        
+        # settings = self.world.get_settings()
+        # settings.synchronous_mode = True
+        # self.world.apply_settings(settings)
 
     def __get_ego_vehicle(self):
         # find actor 'ego_vehicle'
-        actors = self.world.get_actors().filter('vehicle.*')
-        for actor in actors:
-            if(actor.attributes.get('role_name') == 'ego_vehicle'):
-                ego_id = actor.id
+        ego_id = ""
+        while ego_id == "":
+            print("waiting to get Vehicle...")
+            actors = self.world.get_actors().filter('vehicle.*')
+            for actor in actors:
+                if(actor.attributes.get('role_name') == 'ego_vehicle'):
+                    ego_id = actor.id
+
         ego_vehicle = self.world.get_actor(ego_id)
 
         return ego_vehicle
@@ -28,7 +36,8 @@ class EgoHandler:
         self.ego_vehicle.set_transform(transform)
         time.sleep(1)
         
-
+    def step(self):
+        self.world.tick()
 
     def destory(self):
         pass
