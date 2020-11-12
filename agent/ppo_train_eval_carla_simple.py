@@ -17,6 +17,7 @@ from tf_agents.networks.actor_distribution_rnn_network import ActorDistributionR
 from tf_agents.networks.value_rnn_network import ValueRnnNetwork
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.policies.policy_saver import PolicySaver
+import imageio
 
 from signal import signal, SIGINT
 
@@ -30,6 +31,24 @@ FLAGS = flags.FLAGS
 
 terminate = False
 counter = 0
+
+def create_video(tf_environment, policy, num_episodes=10, video_filename='imageio.mp4'):
+	print("Generating video %s" % video_filename)
+	with imageio.get_writer(video_filename, fps=60) as video:
+		for episode in range(num_episodes):
+			print("Generating episode %d of %d" % (episode, num_episodes))
+
+			time_step = tf_environment.reset()
+			state = policy.get_initial_state(tf_environment.batch_size)
+
+			video.append_data(tf_environment.render())
+			while not time_step.is_last():
+				PolicyStep = policy.action(time_step, state)
+				state = PolicyStep.state
+				time_step = tf_environment.step(PolicyStep.action)
+				video.append_data(tf_environment.render())
+
+	print("Finished video %s" % video_filename)
 
 def handler(signal_received, frame):
     # Handle any cleanup here
@@ -45,33 +64,33 @@ def create_networks(observation_spec, action_spec):
 	actor_net = ActorDistributionRnnNetwork(
 		observation_spec,
 		action_spec,
-		conv_layer_params=[(64, 8, 4), (32, 4, 2)],
+		conv_layer_params=[(64, 8, 4), (32, 4, 2), (16, 4, 2)],
 		input_fc_layer_params=(256,),
 		lstm_size=(256,),
 		output_fc_layer_params=(128,),
-		activation_fn=tf.nn.elu)
+		activation_fn=tf.keras.activations.relu)
 	value_net = ValueRnnNetwork(
 		observation_spec,
-		conv_layer_params=[(64, 8, 4), (32, 4, 2)],
+		conv_layer_params=[(64, 8, 4), (32, 4, 2), (16, 4, 2)],
 		input_fc_layer_params=(256,),
 		lstm_size=(256,),
 		output_fc_layer_params=(128,),
-		activation_fn=tf.nn.elu)
+		activation_fn=tf.keras.activations.relu)
 
 	return actor_net, value_net
 
 
 def train_eval_doom_simple(
 		# Params for collect
-		num_environment_steps=30000000,
+		num_environment_steps=100000,
 		collect_episodes_per_iteration=32,
-		num_parallel_environments=32,
+		num_parallel_environments=1,
 		replay_buffer_capacity=301,  # Per-environment
 		# Params for train
 		num_epochs=25,
 		learning_rate=4e-4,
 		# Params for eval
-		eval_interval=500,
+		eval_interval=10,
 		num_video_episodes=10,
 		# Params for summaries and logging
 		log_interval=10):
@@ -114,18 +133,20 @@ def train_eval_doom_simple(
 	train_replay_buffer = tf_uniform_replay_buffer.TFUniformReplayBuffer(tf_agent.collect_data_spec, batch_size=num_parallel_environments, max_length=replay_buffer_capacity)
 	collect_driver = dynamic_episode_driver.DynamicEpisodeDriver(tf_env, tf_agent.collect_policy, observers=[replay_buffer.add_batch] + step_metrics, num_episodes=collect_episodes_per_iteration)
 
-
-	def train_step():
-		trajectories = train_replay_buffer.gather_all()
-		return tf_agent.train(experience=trajectories)
-
-
 	collect_time = 0
 	train_time = 0
 	timed_at_step = global_step.numpy()
 	
-	my_policy = tf_agent.collect_policy
+	my_policy = tf_agent.policy
 	saver = PolicySaver(my_policy, batch_size=None)
+
+	def train_step():
+		trajectories = train_replay_buffer.gather_all()
+		return tf_agent.train(experience=trajectories)
+	
+	def evaluate(policy, step_count):
+		create_video(tf_env, policy, 10, f'agent/behave/imageio_{step_count}.mp4')
+
 
 	print("collecting samples initial:")
 	collect_driver.run()
@@ -141,15 +162,15 @@ def train_eval_doom_simple(
 
 		start_time = time.time()
 		count = 0
-		while collector_thread.is_alive() and not terminate:
-			count = count + 1
-			print(f"Training agent {count}")
-			total_loss, _ = train_step()
-			print()
-			print("'''''''''''''''''''''''''''''''''''Tensorflow logs:'''''''''''''''''''''''''''''''''''")
-			print(f'step = {global_step.numpy()}, loss = {total_loss}')
-			print("'''''''''''''''''''''''''''''''''''Tensorflow logs:'''''''''''''''''''''''''''''''''''")
-			print()
+		# while collector_thread.is_alive() and not terminate:
+		# 	count = count + 1
+		print(f"Training agent {count}")
+		total_loss, _ = train_step()
+		print()
+		print("'''''''''''''''''''''''''''''''''''Tensorflow logs:'''''''''''''''''''''''''''''''''''")
+		print(f'step = {global_step.numpy()}, loss = {total_loss}, env_metric = {environment_steps_metric.result()}')
+		print("'''''''''''''''''''''''''''''''''''Tensorflow logs:'''''''''''''''''''''''''''''''''''")
+		print()
 		train_replay_buffer.clear()
 		print("Training agent Finshed")
 		print("Waiting for collecting samples thread")
@@ -179,10 +200,13 @@ def train_eval_doom_simple(
 
 		if global_step_val % eval_interval == 0:
 			print("Evaluating!!")
-			saver.save('agent/saved/policy_ppo_simple')
-			# evaluate()
+			saver.save(f'agent/saved/policy_ppo_simple_{global_step_val}')
+			policy = tf_agent.policy
+			evaluate(policy, global_step_val)
+
 	print("Terminated")
-	# evaluate()
+	policy = tf_agent.policy
+	evaluate(policy, global_step_val)
 
 
 def main(_):

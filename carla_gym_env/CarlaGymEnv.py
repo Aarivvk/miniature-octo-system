@@ -4,6 +4,10 @@ import cv2
 import numpy as np
 from numpy import asarray
 
+import gym
+from gym import error, spaces, utils
+from gym.utils import seeding
+
 from tf_agents.environments import py_environment, utils
 from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step
@@ -20,10 +24,11 @@ from sensor_msgs.msg import Image
 from carla_gym_env.ego import EgoHandler
 
 
-class CarlaEnv(py_environment.PyEnvironment):
+class CarlaEnv(gym.Env):
 
 	def __init__(self):
 		super().__init__()
+		metadata = {'render.modes': ['human']}
 		
 		rospy.init_node('carla_ego_gym', anonymous=True)
 		self.rate = rospy.Rate(20) # 100Hz
@@ -45,6 +50,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 
 		# sensors data
 		self._reset_data()
+		self._steering_threshold = 0.3
 
 
 		# History data
@@ -52,7 +58,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 		max_steering = self.ego.get_max_steering_angle()
 		self.total_reward = 0.0
 
-		self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=[0.0, (-1 * max_steering)], maximum=[27.0, max_steering], name='action')
+		self._action_spec = array_spec.BoundedArraySpec(shape=(2,), dtype=np.float32, minimum=[0.0, (-1 * max_steering)], maximum=[10.0, max_steering], name='action')
 		self._observation_spec = array_spec.BoundedArraySpec(shape=(84, 84, 3), dtype=np.float32, minimum=0, maximum=1, name='observation')
 
 		self._send_command([0,0])
@@ -76,7 +82,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 		self.pub_carla_control_cmd.publish(self.carla_ctrl_cmd)
 
 
-	def _reset(self):
+	def reset(self):
 		# print(f"Resetting environment collid: {self.is_ego_collided} lane_crossed:{self.data_lane_crossed} Total reward {self.total_reward}")
 		self.rate.sleep()
 		self._reset_data()
@@ -84,34 +90,51 @@ class CarlaEnv(py_environment.PyEnvironment):
 		self._send_command([0,0])
 		self.ego.step()
 		self.total_reward = 0.0
-		return time_step.restart(self.data_cam_front_rgb)
+		return self.data_cam_front_rgb
 
 
-	def _step(self, action):
-		if self.isEgoViolatedTraffic():
-			# The last action ended the episode. Ignore the current action and start a new episode.
-			return self._reset()
+	def step(self, action):
+		# scale back to original values.
+		original = action
 
+		# if original[1] < -self._steering_threshold:
+		# 	self.left_actions = self.left_actions + 1
+		# if original[1] > self._steering_threshold:
+		# 	self.right_actions = self.right_actions + 1
+		
+		action[0] = (action[0] + 1) * self._action_spec.maximum[0]
+		# action[1] = action[1] * self._action_spec.maximum[1]
 		self._send_command(action)
+		
 		# needed for ros msg to sync.
 		self.rate.sleep()
-		self.ego.step()
+		kmph = self.ego.step()
 		
-		if action[0] <= 0.5 or self.isEgoViolatedTraffic():
-			reward = -1
-			self.total_reward = self.total_reward + reward
-		else:
-			reward = action[0]/self._action_spec.maximum[0] - abs(self.last_steering - action[1])
-			reward = reward / 1000.0
-			self.last_steering = action[1]
-			self.total_reward = self.total_reward + reward
+		done = self.isEgoViolatedTraffic()
 
-		# return transition depending on game state
-		# self.render()
-		if self.isEgoViolatedTraffic():
-			return time_step.termination(self.data_cam_front_rgb, reward)
+		# if (self.right_actions or self.left_actions) >= 40 and not done:
+		# 	self.left_actions = 0.0
+		# 	self.right_actions = 0.0
+		# 	done = True
+
+		if done:
+			# Punish for violating the traffic rules.
+			reward = -200
+		elif kmph < 50:
+			reward = -1
 		else:
-			return time_step.transition(self.data_cam_front_rgb, reward)
+			# Reward if accelaration is +ve and punish if -ve.
+			reward = 1 #original[0]
+			# Punish for jerk and for extreem truns.
+			# reward = reward - (abs(original[1]) * 1.5)#- abs(self.last_steering - original[1]) 
+			# As it is for every step and for cumulative reward scale it down.
+			# if not reward < 0:
+			# 	reward = reward / 100.0
+			self.last_steering = original[1]
+		
+		self.total_reward = self.total_reward + reward
+		# return transition depending on game state
+		return (self.data_cam_front_rgb, reward, done, "VK")
 
 	def _reset_data(self):
 		self._render_img = np.zeros((84, 84, 3), dtype=np.float32)
@@ -120,9 +143,11 @@ class CarlaEnv(py_environment.PyEnvironment):
 		self.data_collision_intensity = 0.0
 		self.data_lane_crossed = False
 		self.is_ego_collided = False
+		self.left_actions = 0.0
+		self.right_actions = 0.0
 
 
-	def render(self, mode='rgb_array'):
+	def render(self, mode='human'):
 		""" Return image for rendering. """
 		# cv2.imshow("vk", self.data_cam_front_rgb)
 		# cv2.waitKey(1)
@@ -158,6 +183,7 @@ class CarlaEnv(py_environment.PyEnvironment):
 		array = np.reshape(array, (image.height, image.width, 4))
 		array = cv2.cvtColor(array, cv2.COLOR_RGBA2RGB)
 		self._render_img = array
+		# Normalise the array.
 		array = np.divide(array, 255, dtype=np.float32)
 		array = cv2.resize(array, (84, 84))
 		# array = array[-42:,:]
@@ -178,4 +204,8 @@ class CarlaEnv(py_environment.PyEnvironment):
 
 if __name__ == "__main__":
 	environment = CarlaEnv()
-	utils.validate_py_environment(environment, episodes=5)
+	environment.reset()
+	done = False
+	while not done:
+		state, reward, done, info = environment.step([0.0,0.0])
+

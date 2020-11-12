@@ -45,6 +45,12 @@ RUN apt-get update && apt-get install -y ros-melodic-desktop python3-yaml carla-
 
 RUN apt-get install -y nano gedit
 
+RUN pip install stable-baselines3
+
+RUN pip install imageio-ffmpeg
+
+RUN pip install keras
+
 ENV USER tf
 ENV HOME /home/${USER}
 ENV SHELL /bin/bash

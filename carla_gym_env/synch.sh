@@ -1,0 +1,1 @@
+sudo nano /opt/carla-ros-bridge/melodic/share/carla_ros_bridge/config/settings.yaml
