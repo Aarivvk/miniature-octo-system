@@ -169,9 +169,9 @@ def get_critic():
     # State as input
     state_input = layers.Input(shape = num_states)
     state_out = layers.Conv2D(32, kernel_size=(3, 3), activation='relu')(state_input)
-    state_out = layers.MaxPooling2D(pool_size = (2, 2))(state_out)
+    # state_out = layers.MaxPooling2D(pool_size = (2, 2))(state_out)
     state_out = layers.Conv2D(64, kernel_size=(3, 3), activation='relu')(state_out)
-    state_out = layers.MaxPooling2D(pool_size = (2, 2))(state_out)
+    state_out = layers.MaxPooling2D(pool_size = (1, 1))(state_out)
     state_out = layers.Conv2D(128, kernel_size=(3, 3), activation='relu')(state_out)
     state_out = layers.MaxPooling2D(pool_size = (2, 2))(state_out)
 
@@ -247,7 +247,7 @@ critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
 total_episodes = 2000
-max_num_per_epi = 2000
+max_num_per_epi = 250
 # Discount factor for future rewards
 gamma = 0.99
 # Used to update target networks
@@ -268,7 +268,7 @@ for ep in range(total_episodes):
     prev_state = env.reset()
     episodic_reward = 0
 
-    while True:
+    for epi_step in range(max_num_per_epi):
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
         # env.render()
