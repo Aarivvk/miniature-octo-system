@@ -261,6 +261,8 @@ ep_reward_list = []
 avg_reward_list = []
 # To track when to save the network.
 saved_interval = 500
+auto_p_toggle = 2
+auto_p = False
 
 # Takes about 4 min to train
 for ep in range(total_episodes):
@@ -277,9 +279,12 @@ for ep in range(total_episodes):
 
         action = policy(tf_prev_state, ou_noise)
         # Recieve state and reward from environment.
-        state, reward, done, info = env.step(action)
+        state, reward, done, sim_action = env.step(action, auto_p=auto_p)
 
-        buffer.record((prev_state, action, reward, state))
+        if auto_p:
+            buffer.record((prev_state, sim_action, reward, state))
+        else:
+            buffer.record((prev_state, action, reward, state))
         episodic_reward += reward
 
         actor_loss, critic_loss = buffer.learn()
@@ -296,21 +301,25 @@ for ep in range(total_episodes):
 
     # Mean of last 40 episodes
     avg_reward = np.mean(ep_reward_list[-40:])
-    str1 = f"| Episode * {ep} * Avg Reward is ==> {avg_reward} * Ep. Reward {episodic_reward}"
-    str2 = f"| Actor loss ==> {actor_loss} * Critic loss ==> {critic_loss}"
+    avg_reward_list.append(avg_reward)
+    
+    str1 = f"| Episode * {ep} * Avg Reward is ==> {avg_reward:.2f} * Ep. Reward {episodic_reward:.2f} auto_p {auto_p}"
+    str2 = f"| Actor loss ==> {actor_loss:.2f} * Critic loss ==> {critic_loss:.2f}"
     str_lenth = max(len(str1), len(str2))
     print("-"*str_lenth)
     print(str1 + (" " * (str_lenth - len(str1))) + "|")
     print(str2+ (" " * (str_lenth - len(str2))) + "|")
     print("-"*str_lenth)
     print()
-    avg_reward_list.append(avg_reward)
 
     if((ep % saved_interval) == 0):
         print(f"Saved the target actor and critic model Epi num.:{ep}")
         # Save the weights
         target_actor.save(f"agent/saved/carla_target_actor_{ep}")
         target_critic.save(f"agent/saved/carla_target_critic_{ep}")
+    
+    if (ep % auto_p_toggle) == 0:
+        auto_p = not auto_p
 
 
 # Plotting graph

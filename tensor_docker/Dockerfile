@@ -51,6 +51,8 @@ RUN pip install imageio-ffmpeg
 
 RUN pip install keras
 
+RUN pip install pygame
+
 ENV USER tf
 ENV HOME /home/${USER}
 ENV SHELL /bin/bash

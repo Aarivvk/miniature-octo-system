@@ -94,39 +94,44 @@ class CarlaEnv(gym.Env):
         self.total_reward = 0.0
         return self.data_cam_front_rgb
 
-    def step(self, action):
+    def step(self, action, auto_p=False):
+        self.ego.setAutoP(auto_p)
         # scale back to original values.
-        original = action
+        # original = action
 
         # if original[1] < -self._steering_threshold:
         # 	self.left_actions = self.left_actions + 1
         # if original[1] > self._steering_threshold:
         # 	self.right_actions = self.right_actions + 1
-
-        action[0] = (action[0] + 1) * self._action_spec.maximum[0]
-        action[1] = action[1] * 0.5 #* self._action_spec.maximum[1]
-        self._send_command(action)
+        if not auto_p:
+            action[0] = (action[0] + 1) * self._action_spec.maximum[0]
+            action[1] = action[1] * 0.5 #* self._action_spec.maximum[1]
+            # print(f"Sending agent action {action}")
+            self._send_command(action)
 
         # needed for ros msg to sync.
         self.rate.sleep()
-        kmph, reward = self.ego.step()
+        kmph, reward, sim_actions = self.ego.step()
+        # if auto_p:
+            # converted = (sim_actions[0] + 1) * self._action_spec.maximum[0]
+            # print(f"Sending sim action {sim_actions} * converted action {converted:.3f} * agent action {action}")
 
         done = self.isEgoViolatedTraffic()
 
         if done:
             # Punish for violating the traffic rules.
             reward = -250
-        elif kmph < 35:
-            reward = reward - 1 # - abs(original[1])
+        # elif kmph < 10:
+        #     reward = reward - 1 # - abs(original[1])
         else:
             # Reward if accelaration is +ve and punish if -ve.
-            reward = 1 + reward # original[0]
+            reward = reward + 1 # original[0]
             # Punish for jerk and for extreem truns.
             # reward = reward - (abs(original[1]) * 1.5)#- abs(self.last_steering - original[1])
             # As it is for every step and for cumulative reward scale it down.
             # if reward > 0:
             # 	reward = reward / 100.0
-            self.last_steering = original[1]
+            # self.last_steering = original[1]
         
         # if (self.right_actions or self.left_actions) >= 40 and not done:
         # 	self.left_actions = 0.0
@@ -136,7 +141,7 @@ class CarlaEnv(gym.Env):
         # self.total_reward = self.total_reward + reward
         # reward = reward / 10.0
         # return transition depending on game state
-        return (self.data_cam_front_rgb, reward, done, "VK")
+        return (self.data_cam_front_rgb, reward, done, sim_actions)
 
     def _reset_data(self):
         self._render_img = np.zeros((84, 84, 3), dtype=np.float32)

@@ -12,7 +12,8 @@ class EgoHandler:
         # time.sleep(1)
         self.world = client.get_world()
         self.ego_vehicle = self.__get_ego_vehicle()
-        self.physics_control = self.ego_vehicle.get_physics_control()        
+        self.physics_control = self.ego_vehicle.get_physics_control()
+        self.is_auto_enabled = False
         # settings = self.world.get_settings()
         # settings.synchronous_mode = True
         # self.world.apply_settings(settings)
@@ -46,28 +47,54 @@ class EgoHandler:
         self.ego_vehicle.set_transform(transform)
         self.ego_vehicle.set_simulate_physics(True)
         # time.sleep(1)
+
+    def setAutoP(self, value):
+        if not self.is_auto_enabled == value:
+            self.ego_vehicle.set_autopilot(value)
+            self.is_auto_enabled = value
+
+    def convertRange(self, OldValue):
+        OldMax = 1
+        OldMin = 0
+        NewMax = 1
+        NewMin = -1
+        OldRange = (OldMax - OldMin)
+        if (OldRange == 0):
+            NewValue = NewMin
+        else:
+            NewRange = (NewMax - NewMin)  
+            NewValue = (((OldValue - OldMin) * NewRange) / OldRange) + NewMin
+        return NewValue
+
         
     def step(self):
-        way_point_p = self.world.get_map().get_waypoint(self.ego_vehicle.get_location())
-        self.world.debug.draw_string(way_point_p.transform.location, 'O', draw_shadow=False,
-                                   color=carla.Color(r=0, g=255, b=0), life_time=100.0,
-                                   persistent_lines=True)
+        # life_span = 0.0
+        # way_point_p = self.world.get_map().get_waypoint(self.ego_vehicle.get_location())
+        # self.world.debug.draw_string(way_point_p.transform.location, 'O', draw_shadow=False,
+        #                            color=carla.Color(r=0, g=255, b=0), life_time=life_span,
+        #                            persistent_lines=True)
         self.world.tick()
         way_point_n = self.world.get_map().get_waypoint(self.ego_vehicle.get_location())
-        self.world.debug.draw_string(way_point_n.transform.location, 'O', draw_shadow=False,
-                                   color=carla.Color(r=255, g=0, b=0), life_time=100.0,
-                                   persistent_lines=True)
-        expected_wp = way_point_n.next(2.0)[0]
+        # self.world.debug.draw_string(way_point_n.transform.location, 'O', draw_shadow=False,
+        #                            color=carla.Color(r=255, g=0, b=0), life_time=life_span,
+        #                            persistent_lines=True)
+        # expected_wp = way_point_n.next(2.0)[0]
         # print(way_point_n.transform.location)
         off_location = way_point_n.transform.location - self.ego_vehicle.get_location()
         off_location = abs(off_location.x) + abs(off_location.z) + abs(off_location.z)
         off_location = -off_location
-        self.world.debug.draw_string(expected_wp.transform.location, 'X', draw_shadow=False,
-                                   color=carla.Color(r=255, g=0, b=0), life_time=100.0,
-                                   persistent_lines=True)
+        # self.world.debug.draw_string(expected_wp.transform.location, 'X', draw_shadow=False,
+        #                            color=carla.Color(r=255, g=0, b=0), life_time=life_span,
+        #                            persistent_lines=True)
         v = self.ego_vehicle.get_velocity()
         kmph = int(3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2))
-        return (kmph, off_location)
+        if self.is_auto_enabled:
+            ctrl = self.ego_vehicle.get_control()
+            action = [self.convertRange(ctrl.throttle), ctrl.steer]
+        else:
+            action = [0.0, 0.0]
+
+        return (kmph, off_location, action)
 
     def destory(self):
         pass
